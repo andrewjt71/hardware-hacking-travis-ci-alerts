@@ -21,7 +21,7 @@ const char* travis_token = "token CHANGE_ME";
 const bool noise_disabled = false;
 const bool in_office = false;
 
-const char* fingerprint = "A1:92:CE:DB:F1:F6:B0:17:D8:3B:17:92:8E:CC:AD:E3:58:68:70:57";
+const char* fingerprint = "43:52:E5:12:B9:91:B5:EC:15:D0:18:D4:94:6E:13:BA:0B:CF:A1:3E";
 const uint8_t green_pin = D7;
 const uint8_t red_pin = D5;
 const uint8_t yellow_pin = D8; // Actually D3 on board
