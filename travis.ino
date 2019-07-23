@@ -5,10 +5,6 @@
 #include <ArduinoJson.h>
 
 #define OLED_RESET 0  // GPIO0
-#define LOGO16_GLCD_HEIGHT 48
-#define LOGO16_GLCD_WIDTH 64
-#define SSD1306_LCDWIDTH 64
-#define SSD1306_LCDHEIGHT 48
 
 // SECRETS
 const char* home_ssid = "CHANGE_ME";
@@ -115,7 +111,7 @@ void process() {
      yellowOn(false);
   }
   
-  printText(String(numberOfBuilds) + " Build(s) running", true);
+  printText(String(numberOfBuilds), false, 0, 2);
 
   // Determine builds in previousBuildIDs which are not in currentBuilds
   // @todo: make this dynamic
@@ -128,15 +124,20 @@ void process() {
     bool inCurrent = isInCurrent(buildId);
     
     if (inCurrent == false) {
-      bool jobPassed = passed(buildId);
 
-      if (jobPassed) {
+      const DynamicJsonDocument build = getBuild(buildId);
+      const String status = build["state"];
+      const String prTitle = build["pull_request_title"];
+      const String user = build["created_by"]["login"];
+
+      printText(user, true, 0, 2);
+      if (status == "passed") {
         flashGreen();
-        printText("A build passed :)", true);
       } else {
-        printText("A build failed :(", true);
         flashRed();
       }
+      
+      printText(String(numberOfBuilds), false, 0, 2);
     }
   }
   moveCurrentBuildsToPreviousBuilds();
@@ -150,9 +151,9 @@ void process() {
  * 
  * @return void
  */
-void printText(String text, bool shouldScroll) {
+void printText(String text, bool shouldScroll, int duration, int size) {
   display.clearDisplay();
-  
+
   if (shouldScroll) {
     display.setCursor(0,15);
     display.startscrollleft(0x00, 0x0F);
@@ -161,12 +162,12 @@ void printText(String text, bool shouldScroll) {
     display.stopscroll();
   }
   
-  display.setTextSize(1);
+  display.setTextSize(size);
   display.setTextColor(WHITE);
   
   display.println(text);
   display.display();
-  delay(1);
+  delay(duration);
 }
 
 /**
@@ -175,7 +176,7 @@ void printText(String text, bool shouldScroll) {
  * @return void
  */
 void connectToWifi() {
-  printText("Connecting to wifi.. ", true);
+  printText("Connecting... ", true, 0, 2);
 
   WiFi.mode(WIFI_STA);
 
@@ -189,17 +190,17 @@ void connectToWifi() {
     delay(500);
   }
   
-  printText("Connected!", false);
+  printText("Ready!", false, 0, 2);
 }
 
 /**
- * Return whether or not the build with a given ID passed
+ * Return build data
  * 
  * @var int buildId
  * 
- * @return bool
+ * @return DynamicJsonDocument
  */
-bool passed(int buildId) {  
+DynamicJsonDocument getBuild(int buildId) {  
   String buildUrl = "https://api.travis-ci.com/build/" + String(buildId);
   HTTPClient http;
   http.begin(buildUrl, fingerprint);
@@ -207,6 +208,8 @@ bool passed(int buildId) {
   http.addHeader("Authorization", travis_token);
 
   int httpCode = http.GET();
+
+  // @todo: Handle failure.
   if(httpCode == HTTP_CODE_OK) {
     String payload = http.getString();
     http.end();
@@ -224,17 +227,7 @@ bool passed(int buildId) {
     DynamicJsonDocument doc(capacity);
     deserializeJson(doc, payload);
 
-    const String status = doc["state"];
-
-    if (status == "passed") {
-      return true;
-    } else {
-      return false;
-    }
-    
-  } else {
-    // If http request failed, log it to the serial and then try again.
-    return passed(buildId);
+    return doc;
   }
 }
 
@@ -350,7 +343,7 @@ String getActiveBuilds() {
 void flashRed() {
   digitalWrite(red_pin, HIGH);
   playFail();
-  delay(3000);
+  delay(10000);
   digitalWrite(red_pin, LOW);
 }
 
@@ -362,7 +355,7 @@ void flashRed() {
 void flashYellow() {
   digitalWrite(yellow_pin, HIGH);
   playDoingSomethingSound();
-  delay(3000);
+  delay(10000);
   digitalWrite(yellow_pin, LOW);
 }
 
@@ -400,7 +393,7 @@ void greenOn(bool $on) {
 void flashGreen() {
   digitalWrite(green_pin, HIGH);
   playStatusChange();
-  delay(3000);
+  delay(10000);
   digitalWrite(green_pin, LOW);
 }
 
@@ -483,4 +476,3 @@ void beep(int note, unsigned char delayms){
   analogWrite(speaker_pin, 0);
   delay(delayms); 
 }  
-
