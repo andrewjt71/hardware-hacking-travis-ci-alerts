@@ -21,14 +21,18 @@ const char* travis_token = "token CHANGE_ME";
 const bool noise_disabled = false;
 const bool in_office = false;
 
-const char* fingerprint = "43:52:E5:12:B9:91:B5:EC:15:D0:18:D4:94:6E:13:BA:0B:CF:A1:3E";
+// GENERAL CONFIG
+const char* fingerprint = "43:52:E5:12:B9:91:B5:EC:15:D0:18:D4:94:6E:13:BA:0B:CF:A1:3E"; // https://www.grc.com/fingerprints.html (travis-ci.com)
+const int max_builds_supported = 5;
+int previousBuildIDs [] = {0,0,0,0,0};
+int currentBuilds [] = {0,0,0,0,0};
+const char* featured_repo = "peake";
+
+// PIN SETUP
 const uint8_t green_pin = D7;
 const uint8_t red_pin = D5;
 const uint8_t yellow_pin = D8; // Actually D3 on board
 const uint8_t speaker_pin = D6;
-int previousBuildIDs [] = {0,0,0,0,0,0,0,0,0,0};
-int currentBuilds [] = {0,0,0,0,0,0,0,0,0,0};
-const int max_builds_supported = 10;
 Adafruit_SSD1306 display(OLED_RESET);
 
 /**
@@ -62,7 +66,7 @@ void setup() {
  */
 void loop() {
   process();
- delay(5000);
+  delay(5000);
 }
 
 /**
@@ -95,6 +99,10 @@ void process() {
   for (auto build : builds) {
     int id = build["id"];
     String repo = build["repository"]["name"];
+
+    if(repo.indexOf(featured_repo) == -1) {
+      continue;
+    }
 
     numberOfBuilds++;
     currentBuilds[currentBuildIndex] = id;
@@ -319,7 +327,6 @@ void printPrevBuilds() {
  * @return void
  */
 String getActiveBuilds() {
-  
   String activeBuildUrl = "https://api.travis-ci.com/owner/boxuk/active";
   HTTPClient http;
   http.begin(activeBuildUrl, fingerprint);
@@ -476,3 +483,4 @@ void beep(int note, unsigned char delayms){
   analogWrite(speaker_pin, 0);
   delay(delayms); 
 }  
+
