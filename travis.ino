@@ -36,12 +36,14 @@ Adafruit_SSD1306 display(OLED_RESET);
  */
 void setup() { 
   playDoingSomethingSound();
-  
+
   // oled using d1, d2
   pinMode(red_pin, OUTPUT); // red
   pinMode(yellow_pin, OUTPUT); // yellow
   pinMode(green_pin, OUTPUT); // green
   pinMode(speaker_pin, OUTPUT); // speaker
+
+  Serial.begin(9600);
 
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3C (for the 64x48)
   display.display();
@@ -124,7 +126,6 @@ void process() {
     bool inCurrent = isInCurrent(buildId);
     
     if (inCurrent == false) {
-
       const DynamicJsonDocument build = getBuild(buildId);
       const String status = build["state"];
       const String prTitle = build["pull_request_title"];
@@ -211,6 +212,7 @@ DynamicJsonDocument getBuild(int buildId) {
 
   // @todo: Handle failure.
   if(httpCode == HTTP_CODE_OK) {
+
     String payload = http.getString();
     http.end();
 
@@ -222,7 +224,7 @@ DynamicJsonDocument getBuild(int buildId) {
     JSON_OBJECT_SIZE(5) + 
     JSON_OBJECT_SIZE(6) + 
     JSON_OBJECT_SIZE(8) + JSON_OBJECT_SIZE(23) + 
-    1190;
+    3000;
 
     DynamicJsonDocument doc(capacity);
     deserializeJson(doc, payload);
