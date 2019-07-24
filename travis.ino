@@ -29,7 +29,7 @@ const uint8_t green_pin = D7;
 const uint8_t red_pin = D5;
 const uint8_t yellow_pin = D8; // Actually D3 on board
 const uint8_t speaker_pin = D6;
-Adafruit_SSD1306 display(OLED_RESET);
+Adafruit_SSD1306 display(OLED_RESET); // 64×48 pixels (https://wiki.wemos.cc/products:d1_mini_shields:oled_shield)
 
 /**
  * This is the function which the chip will run on setup
@@ -43,17 +43,20 @@ void setup() {
   pinMode(green_pin, OUTPUT); // green
   pinMode(speaker_pin, OUTPUT); // speaker
 
+  // For use debugging.
   Serial.begin(9600);
 
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3C (for the 64x48)
-  display.display();
-  delay(2000);
+  
+  // Default all LED's to off. This must be done after display.begin, or yellow will be kept on.
+  yellowOn(false);
+  greenOn(false);
+  redOn(false);
 
-  // Clear the buffer.
-  display.clearDisplay();
+  printText("Hi =)", false, 2, false);
+  delay(3000);
   
   connectToWifi();
-  playBootUpSound();
   delay(2000);
 }
 
@@ -73,22 +76,8 @@ void loop() {
  * @return void
  */
 void process() {
-  String runningJobs = getActiveBuilds();
-
-  // https://arduinojson.org/v6/assistant/
-  const size_t capacity = max_builds_supported*JSON_ARRAY_SIZE(0) + 
-  max_builds_supported*JSON_ARRAY_SIZE(1) + 
-  JSON_ARRAY_SIZE(max_builds_supported) + 
-  max_builds_supported*JSON_OBJECT_SIZE(3) + 
-  5*JSON_OBJECT_SIZE(4) + 
-  max_builds_supported*JSON_OBJECT_SIZE(5) + 
-  max_builds_supported*JSON_OBJECT_SIZE(6) + 
-  max_builds_supported*JSON_OBJECT_SIZE(8) + 
-  max_builds_supported*JSON_OBJECT_SIZE(23);
-
-  DynamicJsonDocument doc(capacity);
-  deserializeJson(doc, runningJobs);
-  JsonArray builds = doc["builds"];
+  DynamicJsonDocument buildData = getActiveBuilds();
+  JsonArray builds = buildData["builds"];
   
   // Iterate over builds and add to the current builds array
   int currentBuildIndex = 0;
@@ -113,7 +102,7 @@ void process() {
      yellowOn(false);
   }
   
-  printText(String(numberOfBuilds), false, 0, 2);
+  printText(String(numberOfBuilds), false, 3, true);
 
   // Determine builds in previousBuildIDs which are not in currentBuilds
   // @todo: make this dynamic
@@ -131,44 +120,17 @@ void process() {
       const String prTitle = build["pull_request_title"];
       const String user = build["created_by"]["login"];
 
-      printText(user, true, 0, 2);
+      printText(user.substring(0, 7), true, 2, false);
       if (status == "passed") {
         flashGreen();
       } else {
         flashRed();
       }
       
-      printText(String(numberOfBuilds), false, 0, 2);
+      printText(String(numberOfBuilds), false, 3, true);
     }
   }
   moveCurrentBuildsToPreviousBuilds();
-}
-
-/**
- * Print text to oled display.
- * 
- * @var String text
- * @var bool should Scroll
- * 
- * @return void
- */
-void printText(String text, bool shouldScroll, int duration, int size) {
-  display.clearDisplay();
-
-  if (shouldScroll) {
-    display.setCursor(0,15);
-    display.startscrollleft(0x00, 0x0F);
-  } else {
-    display.setCursor(35,15);
-    display.stopscroll();
-  }
-  
-  display.setTextSize(size);
-  display.setTextColor(WHITE);
-  
-  display.println(text);
-  display.display();
-  delay(duration);
 }
 
 /**
@@ -177,7 +139,8 @@ void printText(String text, bool shouldScroll, int duration, int size) {
  * @return void
  */
 void connectToWifi() {
-  printText("Connecting... ", true, 0, 2);
+  yellowOn(true);
+  printText("WiFi", false, 2, false);
 
   WiFi.mode(WIFI_STA);
 
@@ -190,8 +153,15 @@ void connectToWifi() {
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
   }
+  yellowOn(false);
+
+  greenOn(true);
+  printText("Ready", false, 2, false);
+  playBootUpSound();
+  delay(2000);
   
-  printText("Ready!", false, 0, 2);
+  printText("...", false, 2, false);
+  greenOn(false);
 }
 
 /**
@@ -229,6 +199,41 @@ DynamicJsonDocument getBuild(int buildId) {
     DynamicJsonDocument doc(capacity);
     deserializeJson(doc, payload);
 
+    return doc;
+  }
+}
+
+/**
+ * Retrieve active builds from Travis
+ * 
+ * @return void
+ */
+DynamicJsonDocument getActiveBuilds() {
+  printText("...", false, 2, false);
+  String activeBuildUrl = "https://api.travis-ci.com/owner/boxuk/active";
+  HTTPClient http;
+  http.begin(activeBuildUrl, fingerprint);
+  http.addHeader("Travis-API-Version", "3");
+  http.addHeader("Authorization", travis_token);
+  int httpCode = http.GET();
+  if(httpCode == HTTP_CODE_OK) {
+    String payload = http.getString();
+    http.end();
+
+    // https://arduinojson.org/v6/assistant/
+    const size_t capacity = max_builds_supported*JSON_ARRAY_SIZE(0) + 
+    max_builds_supported*JSON_ARRAY_SIZE(1) + 
+    JSON_ARRAY_SIZE(max_builds_supported) + 
+    max_builds_supported*JSON_OBJECT_SIZE(3) + 
+    5*JSON_OBJECT_SIZE(4) + 
+    max_builds_supported*JSON_OBJECT_SIZE(5) + 
+    max_builds_supported*JSON_OBJECT_SIZE(6) + 
+    max_builds_supported*JSON_OBJECT_SIZE(8) + 
+    max_builds_supported*JSON_OBJECT_SIZE(23);
+  
+    DynamicJsonDocument doc(capacity);
+    deserializeJson(doc, payload);
+    
     return doc;
   }
 }
@@ -291,50 +296,35 @@ void moveCurrentBuildsToPreviousBuilds() {
 }
 
 /**
- * Print current builds to the debugger
+ * Print text to oled display.
+ * 
+ * @var String text
+ * @var bool shouldScroll
+ * @var int fontSize
+ * @var bool centered
  * 
  * @return void
  */
-void printCurrentBuilds() {
-  for (int i = 0; i < max_builds_supported; i++) {
-    if (currentBuilds[i] != 0) {
-      Serial.println(currentBuilds[i]);  
-    }
-  }
-}
+void printText(String text, bool shouldScroll, int fontSize, bool centered) {
+  display.clearDisplay();
 
-/**
- * Print prev builds to the debugger
- * 
- * @return void
- */
-void printPrevBuilds() {
-  for (int i = 0; i < max_builds_supported; i++) {
-    if (previousBuildIDs[i] != 0) {
-      Serial.println(previousBuildIDs[i]);  
-    }
-  }
-}
-
-/**
- * Retrieve active builds from Travis
- * 
- * @return void
- */
-String getActiveBuilds() {
-  String activeBuildUrl = "https://api.travis-ci.com/owner/boxuk/active";
-  HTTPClient http;
-  http.begin(activeBuildUrl, fingerprint);
-  http.addHeader("Travis-API-Version", "3");
-  http.addHeader("Authorization", travis_token);
-  int httpCode = http.GET();
-  if(httpCode == HTTP_CODE_OK) {
-    String payload = http.getString();
-    http.end();
-    return payload;
+  if (centered) {
+    display.setCursor(58,10);
   } else {
-    return getActiveBuilds();
+    display.setCursor(35,12);
   }
+
+  if (shouldScroll) {
+    display.startscrollleft(0x00, 0x0F);
+  } else {
+    display.stopscroll();
+  }
+  
+  display.setTextSize(fontSize);
+  display.setTextColor(WHITE);
+  
+  display.println(text);
+  display.display();
 }
 
 /**
@@ -388,6 +378,19 @@ void greenOn(bool $on) {
 }
 
 /**
+ * Turn redlow LED on or off
+ * 
+ * @return void
+ */
+void redOn(bool $on) {
+  if ($on) {
+    digitalWrite(red_pin, HIGH);
+  } else {
+    digitalWrite(red_pin, LOW);
+  }
+}
+
+/**
  * Flash green LED
  * 
  * @return void
@@ -403,7 +406,7 @@ void playBootUpSound(){
   if (noise_disabled) {
     return;
   }
-  greenOn(true);
+
   tone(speaker_pin,NOTE_E6,125);
   delay(130);
   tone(speaker_pin,NOTE_G6,125);
@@ -417,7 +420,6 @@ void playBootUpSound(){
   tone(speaker_pin,NOTE_G7,125);
   delay(125);
   noTone(speaker_pin);
-  greenOn(false);
 }
 
 /**
@@ -477,4 +479,30 @@ void beep(int note, unsigned char delayms){
   delay(delayms);
   analogWrite(speaker_pin, 0);
   delay(delayms); 
-}  
+}
+
+/**
+ * Print current builds to the debugger
+ * 
+ * @return void
+ */
+void printCurrentBuilds() {
+  for (int i = 0; i < max_builds_supported; i++) {
+    if (currentBuilds[i] != 0) {
+      Serial.println(currentBuilds[i]);  
+    }
+  }
+}
+
+/**
+ * Print prev builds to the debugger
+ * 
+ * @return void
+ */
+void printPrevBuilds() {
+  for (int i = 0; i < max_builds_supported; i++) {
+    if (previousBuildIDs[i] != 0) {
+      Serial.println(previousBuildIDs[i]);  
+    }
+  }
+}
