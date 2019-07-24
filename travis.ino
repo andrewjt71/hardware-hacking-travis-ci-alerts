@@ -160,7 +160,7 @@ void connectToWifi() {
   playBootUpSound();
   delay(2000);
   
-  printText("...", false, 2, false);
+  printText(" ...", false, 2, false);
   greenOn(false);
 }
 
@@ -209,7 +209,7 @@ DynamicJsonDocument getBuild(int buildId) {
  * @return void
  */
 DynamicJsonDocument getActiveBuilds() {
-  printText("...", false, 2, false);
+  printText(" ...", false, 2, false);
   String activeBuildUrl = "https://api.travis-ci.com/owner/boxuk/active";
   HTTPClient http;
   http.begin(activeBuildUrl, fingerprint);
