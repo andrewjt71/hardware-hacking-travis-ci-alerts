@@ -20,6 +20,8 @@ const bool in_office = false;
 // GENERAL CONFIG
 const char* fingerprint = "43:52:E5:12:B9:91:B5:EC:15:D0:18:D4:94:6E:13:BA:0B:CF:A1:3E"; // https://www.grc.com/fingerprints.html (travis-ci.com)
 const int max_builds_supported = 5;
+const int max_jobs_supported = 5;
+const int max_stages_supported = 5;
 int previousBuildIDs [] = {0,0,0,0,0};
 int currentBuilds [] = {0,0,0,0,0};
 const char* featured_repo = "peake";
@@ -67,7 +69,7 @@ void setup() {
  */
 void loop() {
   process();
-  delay(5000);
+  delay(8000);
 }
 
 /**
@@ -187,14 +189,17 @@ DynamicJsonDocument getBuild(int buildId) {
     http.end();
 
     https://arduinojson.org/v6/assistant/
-    const size_t capacity = JSON_ARRAY_SIZE(0) + 
-    JSON_ARRAY_SIZE(1) + 
-    JSON_OBJECT_SIZE(3) + 
-    2*JSON_OBJECT_SIZE(4) + 
-    JSON_OBJECT_SIZE(5) + 
-    JSON_OBJECT_SIZE(6) + 
-    JSON_OBJECT_SIZE(8) + JSON_OBJECT_SIZE(23) + 
-    3000;
+    const size_t capacity = 
+    JSON_ARRAY_SIZE(max_stages_supported) + // Stages
+    JSON_ARRAY_SIZE(max_jobs_supported) + // Jobs
+    JSON_OBJECT_SIZE(3) + // Permissions
+    JSON_OBJECT_SIZE(4) + // Branch
+    max_jobs_supported * JSON_OBJECT_SIZE(4) + // Each job
+    JSON_OBJECT_SIZE(5) + // Created by
+    JSON_OBJECT_SIZE(6) + // Repository
+    JSON_OBJECT_SIZE(8) + // Commit
+    JSON_OBJECT_SIZE(23) + // JSON top level
+    2000; // buffer for string duplication
 
     DynamicJsonDocument doc(capacity);
     deserializeJson(doc, payload);
@@ -221,16 +226,20 @@ DynamicJsonDocument getActiveBuilds() {
     http.end();
 
     // https://arduinojson.org/v6/assistant/
-    const size_t capacity = max_builds_supported*JSON_ARRAY_SIZE(0) + 
-    max_builds_supported*JSON_ARRAY_SIZE(1) + 
-    JSON_ARRAY_SIZE(max_builds_supported) + 
-    max_builds_supported*JSON_OBJECT_SIZE(3) + 
-    5*JSON_OBJECT_SIZE(4) + 
-    max_builds_supported*JSON_OBJECT_SIZE(5) + 
-    max_builds_supported*JSON_OBJECT_SIZE(6) + 
-    max_builds_supported*JSON_OBJECT_SIZE(8) + 
-    max_builds_supported*JSON_OBJECT_SIZE(23);
-  
+    const size_t capacity = 
+    max_builds_supported * JSON_ARRAY_SIZE(max_stages_supported) + // Array of stages for each build
+    max_builds_supported * JSON_ARRAY_SIZE(max_jobs_supported) +  //Job array for each build
+    JSON_ARRAY_SIZE(max_builds_supported) + // Array of builds
+    max_builds_supported * JSON_OBJECT_SIZE(3) + // Permissions for each build
+    max_builds_supported * max_jobs_supported * JSON_OBJECT_SIZE(4) + // Each job for each build
+    max_builds_supported * JSON_OBJECT_SIZE(4) + // Branch for each build
+    JSON_OBJECT_SIZE(4) + // JSON top level
+    max_builds_supported * JSON_OBJECT_SIZE(5) + // Created by for each build
+    max_builds_supported * JSON_OBJECT_SIZE(6) + // Repository for each build
+    max_builds_supported * JSON_OBJECT_SIZE(8) + // Commit for each build
+    max_builds_supported * JSON_OBJECT_SIZE(23) + // Each build object
+    5000; // buffer for string duplication
+ 
     DynamicJsonDocument doc(capacity);
     deserializeJson(doc, payload);
     
