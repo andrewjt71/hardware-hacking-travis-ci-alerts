@@ -20,8 +20,8 @@ const bool in_office = false;
 // GENERAL CONFIG
 const char* fingerprint = "43:52:E5:12:B9:91:B5:EC:15:D0:18:D4:94:6E:13:BA:0B:CF:A1:3E"; // https://www.grc.com/fingerprints.html (travis-ci.com)
 const int max_builds_supported = 5;
-const int max_jobs_supported = 5;
-const int max_stages_supported = 5;
+const int max_jobs_supported = 3;
+const int max_stages_supported = 2;
 int previousBuildIDs [] = {0,0,0,0,0};
 int currentBuilds [] = {0,0,0,0,0};
 const char* featured_repo = "peake";
@@ -188,7 +188,7 @@ DynamicJsonDocument getBuild(int buildId) {
     String payload = http.getString();
     http.end();
 
-    https://arduinojson.org/v6/assistant/
+    // https://arduinojson.org/v6/assistant/
     const size_t capacity = 
     JSON_ARRAY_SIZE(max_stages_supported) + // Stages
     JSON_ARRAY_SIZE(max_jobs_supported) + // Jobs
