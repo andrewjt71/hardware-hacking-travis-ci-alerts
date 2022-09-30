@@ -1,5 +1,5 @@
-# Travis Monitor Alarm
-Aim: To use an ESP8266 to monitor travis builds and provide updates on a mini display.
+# Travis CI Monitor Alarm
+Aim: To use an ESP8266 to monitor [Travis CI](https://www.travis-ci.com) builds and provide updates on a mini display.
 
 ## Required Components
 
