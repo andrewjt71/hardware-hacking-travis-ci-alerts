@@ -18,9 +18,9 @@ I began by wiring up a proof of concept to ensure I could correctly control the 
 ![travis-breadboard](./img/travis-breadboard.jpg)
             
 ## Code
-The code connects to WiFi, and periodically hits Travis, checking for builds which are currently running. If builds are detected, the number of builds are displayed on the OLED screen and the amber LED lights up. If one of these builds disappears from the list of running builds, the code hits travis, to determine whether it passed or failed. If it passed, it lights the green LED and notify me via the OLED screen. If it fails, it lights the red LED and notify me via the OLED screen.
+The code connects to WiFi, and periodically hits Travis, checking for builds which are currently running. If builds are detected, the number of builds are displayed on the OLED screen and the amber LED lights up. If one of these builds disappears from the list of running builds, the code hits travis, to determine whether it passed or failed. If it passed, the green light is lit, if it passed, the red light is lit. In either scenario the name of the github username of the commit author is displayed on the OLED screen for a few seconds.
 
-## Casing</h2>
+## Casing
 I decided I'd like to make a casing to hold the components. I had never done this before. A quick Google led me to [Tinkercad](https://www.tinkercad.com). Although this is fairly light compared tosome other CAD software available, it is fairly straight forward to use, and was perfect for what I wanted to do.
 
 ![travis design](./img/travis-3d-design.png)
